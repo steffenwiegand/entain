@@ -10,7 +10,7 @@ The ListRaces API lets you retrieve a list of races with the following propertie
 - **vsible** - represents whether or not the race is visible.
 - **advertised_start_time** - is the time the race is advertised to run.
 
-The ListRaces request takes an optional filter parameter. You can specify the meetingIds within an array of integers and/or a showVisibleOnly boolean flag. **See examples below...**
+The ListRaces request takes an optional filter, orderBy parameter. You can specify the meetingIds within an array of integers and/or a showVisibleOnly boolean flag. **See examples below...**
 
 Curl request with no filter
 ```bash
@@ -38,6 +38,28 @@ curl -X "POST" "http://localhost:8000/v1/list-races" \
      -H 'Content-Type: application/json' \
      -d $'{
   "filter": {"showVisibleOnly":true}
+}'
+```
+
+Curl request with orderBy paramater (targeting any field within races: id, meeting_id, name, number, visible, advertised_start_time)
+
+```bash
+curl -X "POST" "http://localhost:8000/v1/list-races" \
+     -H 'Content-Type: application/json' \
+     -d $'{
+  "filter": {},
+  "orderBy": "meeting_id"
+}'
+```
+
+Curl request with multiple orderBy paramaters (targeting any field within races: id, meeting_id, name, number, visible, advertised_start_time)
+
+```bash
+curl -X "POST" "http://localhost:8000/v1/list-races" \
+     -H 'Content-Type: application/json' \
+     -d $'{
+  "filter": {},
+  "orderBy": "meeting_id, name DESC"
 }'
 ```
 
