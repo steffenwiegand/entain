@@ -11,7 +11,7 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// testing the races.go/List function which has optional filters
+// testing the races.go/List filter paramater to ensure the right number of races is being returned
 func TestRacesList(t *testing.T) {
 
 	// setup racing test data
@@ -63,7 +63,7 @@ func TestRacesList(t *testing.T) {
 	}
 }
 
-// testing the races.go/List function which has optional filters
+// testing the races.go/List function orderBy parameter, which determines the sorting order of the returned races
 func TestRacesListOrderBy(t *testing.T) {
 
 	// setup racing test data
@@ -115,6 +115,58 @@ func TestRacesListOrderBy(t *testing.T) {
 				assert.Equal(t, int(tc.expectedIdOrder[i]), int(race.Id), "Unexpected race id for test case %s. Expected race id is %d. Returned was %d.", tc.name, tc.expectedIdOrder[i], race.Id)
 			}
 		})
+	}
+}
+
+// testing the races.go/List status field, which is determined by the advertised start time of a race
+func TestRacesListStatus(t *testing.T) {
+
+	// setup racing test data
+	testRaces := []struct {
+		id                  int64
+		meetingId           int64
+		name                string
+		number              int64
+		visible             bool
+		advertisedStartTime *timestamppb.Timestamp
+	}{
+		{id: 1, meetingId: 5, name: "Horse Race", number: 91, visible: true, advertisedStartTime: timestamppb.New(time.Date(2009, 11, 21, 0, 0, 0, 0, time.UTC))},
+		{id: 2, meetingId: 1, name: "Dog Race", number: 92, visible: true, advertisedStartTime: timestamppb.New(time.Date(2009, 11, 22, 0, 0, 0, 0, time.UTC))},
+		{id: 3, meetingId: 3, name: "Rabbit Race", number: 93, visible: true, advertisedStartTime: timestamppb.New(time.Now().Add(time.Hour))},
+		{id: 4, meetingId: 4, name: "Rabbit Race", number: 94, visible: true, advertisedStartTime: timestamppb.New(time.Now().Add(2 * time.Hour))},
+		{id: 5, meetingId: 2, name: "Rabbit Race", number: 95, visible: true, advertisedStartTime: timestamppb.New(time.Now().Add(3 * time.Hour))},
+	}
+
+	// setup test db
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// create table
+	createTestTable(t, db)
+
+	// insert test records
+	insertTestRaces(t, db, testRaces)
+
+	testRacesRepo := NewRacesRepo(db)
+
+	// test cases
+	testCases := []struct {
+		name           string
+		id             int
+		exptecedStatus string
+	}{
+		{name: "closed status", id: 1, exptecedStatus: "CLOSED"},
+		{name: "closed status", id: 2, exptecedStatus: "CLOSED"},
+		{name: "open status", id: 3, exptecedStatus: "OPEN"},
+		{name: "open status", id: 4, exptecedStatus: "OPEN"},
+		{name: "open status", id: 5, exptecedStatus: "OPEN"},
+	}
+
+	races, err := testRacesRepo.List(&racing.ListRacesRequestFilter{}, "")
+	require.NoError(t, err)
+
+	for i, race := range races {
+		assert.Equal(t, testCases[i].exptecedStatus, race.Status, "Unexpected race status for race id %d", race.Id)
 	}
 }
 
