@@ -9,8 +9,12 @@ The ListRaces API lets you retrieve a list of races with the following propertie
 - **number** - represents the number of the race.
 - **vsible** - represents whether or not the race is visible.
 - **advertised_start_time** - is the time the race is advertised to run.
+- **status** - represents the status of a race, which is either open or closed.
 
-The ListRaces request takes an optional filter, orderBy parameter. You can specify the meetingIds within an array of integers and/or a showVisibleOnly boolean flag. **See examples below...**
+The ListRaces request takes an optional filter and orderBy parameter. 
+For the **filter paramater** you can specify the meetingIds within an array of integers and/or a showVisibleOnly boolean flag, or leave in blank. 
+For the **order paramater** you can specify one or more columns incl. their sorting order, or leave in blank. 
+**See examples below...**
 
 Curl request with no filter
 ```bash
