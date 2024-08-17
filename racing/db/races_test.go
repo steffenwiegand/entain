@@ -98,12 +98,12 @@ func TestRacesListOrderBy(t *testing.T) {
 	testCases := []struct {
 		name            string
 		orderBy         string
-		expectedIdOrder []int
+		expectedIdOrder []int64
 	}{
-		{name: "no orderBy", orderBy: "", expectedIdOrder: []int{1, 2, 3, 4, 5}},
-		{name: "advertised_start_time DESC", orderBy: "advertised_start_time DESC", expectedIdOrder: []int{5, 4, 3, 2, 1}},
-		{name: "meeting_id", orderBy: "meeting_id", expectedIdOrder: []int{2, 5, 3, 4, 1}},
-		{name: "name, advertised_start_time DESC", orderBy: "name, advertised_start_time DESC", expectedIdOrder: []int{2, 1, 4, 3, 5}},
+		{name: "no orderBy", orderBy: "", expectedIdOrder: []int64{1, 2, 3, 4, 5}},
+		{name: "advertised_start_time DESC", orderBy: "advertised_start_time DESC", expectedIdOrder: []int64{5, 4, 3, 2, 1}},
+		{name: "meeting_id", orderBy: "meeting_id", expectedIdOrder: []int64{2, 5, 3, 4, 1}},
+		{name: "name, advertised_start_time DESC", orderBy: "name, advertised_start_time DESC", expectedIdOrder: []int64{2, 1, 4, 3, 5}},
 	}
 
 	for _, tc := range testCases {
@@ -152,7 +152,7 @@ func TestRacesListStatus(t *testing.T) {
 	// test cases
 	testCases := []struct {
 		name           string
-		id             int
+		id             int64
 		exptecedStatus string
 	}{
 		{name: "closed status", id: 1, exptecedStatus: "CLOSED"},
@@ -168,6 +168,83 @@ func TestRacesListStatus(t *testing.T) {
 	for i, race := range races {
 		assert.Equal(t, testCases[i].exptecedStatus, race.Status, "Unexpected race status for race id %d", race.Id)
 	}
+}
+
+// testing the races.go/GetRace service method
+func TestGetRace(t *testing.T) {
+
+	// setup racing test data
+	testRaces := []struct {
+		id                  int64
+		meetingId           int64
+		name                string
+		number              int64
+		visible             bool
+		advertisedStartTime *timestamppb.Timestamp
+	}{
+		{id: 1, meetingId: 5, name: "Horse Race", number: 91, visible: true, advertisedStartTime: timestamppb.New(time.Date(2009, 11, 21, 0, 0, 0, 0, time.UTC))},
+		{id: 2, meetingId: 1, name: "Dog Race", number: 92, visible: true, advertisedStartTime: timestamppb.New(time.Date(2009, 11, 22, 0, 0, 0, 0, time.UTC))},
+		{id: 3, meetingId: 3, name: "Rabbit Race", number: 93, visible: true, advertisedStartTime: timestamppb.New(time.Now().Add(time.Hour))},
+		{id: 4, meetingId: 4, name: "Rabbit Race", number: 94, visible: true, advertisedStartTime: timestamppb.New(time.Now().Add(2 * time.Hour))},
+		{id: 5, meetingId: 2, name: "Rabbit Race", number: 95, visible: true, advertisedStartTime: timestamppb.New(time.Now().Add(3 * time.Hour))},
+	}
+
+	// setup test db
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// create table
+	createTestTable(t, db)
+
+	// insert test records
+	insertTestRaces(t, db, testRaces)
+
+	testRacesRepo := NewRacesRepo(db)
+
+	// test cases
+	testCases := []struct {
+		name       string
+		id         int64
+		exptecedId int64
+	}{
+		{name: "GetRace id 1 test", id: 1, exptecedId: 1},
+		{name: "GetRace id 2 test", id: 2, exptecedId: 2},
+		{name: "GetRace id 3 test", id: 3, exptecedId: 3},
+		{name: "GetRace id 4 test", id: 4, exptecedId: 4},
+		{name: "GetRace id 5 test", id: 5, exptecedId: 5},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			race, err := testRacesRepo.Get(tc.id)
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.exptecedId, race.Id, "Unexpected race returned for race id %d", race.Id)
+		})
+	}
+}
+
+// testing the races.go/GetRace service method for not found
+func TestGetRaceNotFound(t *testing.T) {
+	// setup test db
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// create table
+	createTestTable(t, db)
+
+	testRacesRepo := NewRacesRepo(db)
+
+	race, err := testRacesRepo.Get(1)
+
+	// expected error from races.go
+	expectedErr := ErrRaceNotFound(1)
+
+	assert.Error(t, err)
+	assert.Equal(t, expectedErr, err, "Unexpected error for race id 1. Error did not match the expected not found error.")
+
+	// make sure no race was returned
+	assert.Nil(t, race, "Unexpected GetRace result for race id 1. An actual race was returned.")
 }
 
 func setupTestDB(t *testing.T) *sql.DB {

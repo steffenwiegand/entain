@@ -2,6 +2,8 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +21,9 @@ type RacesRepo interface {
 
 	// List will return a list of races.
 	List(filter *racing.ListRacesRequestFilter, orderBy string) ([]*racing.Race, error)
+
+	// Get returns a race for a given race id
+	Get(id int64) (*racing.Race, error)
 }
 
 type racesRepo struct {
@@ -94,8 +99,8 @@ func (r *racesRepo) applyFilter(query string, filter *racing.ListRacesRequestFil
 	return query, args
 }
 
+// applyOrderBy appends an ORDER BY clause to the query by validating the order by paramter
 func (r *racesRepo) applyOrderBy(query string, orderBy string) string {
-
 	// default case
 	if strings.TrimSpace(orderBy) == "" {
 		query += " ORDER BY advertised_start_time"
@@ -106,19 +111,33 @@ func (r *racesRepo) applyOrderBy(query string, orderBy string) string {
 
 	var orderClauses []string
 
-	// loop through each field provided and append to query if not empty
+	// loop through each field provided and validate it
 	for _, field := range orderFields {
 		field = strings.TrimSpace(field)
 
-		if strings.TrimSpace(field) != "" {
+		if validateOrderByField(field) && field != "" {
 			orderClauses = append(orderClauses, field)
 		}
 	}
 
 	// append the order clauses to the query
-	query += " ORDER BY " + strings.Join(orderClauses, ", ")
+	if len(orderClauses) > 0 {
+		query += " ORDER BY " + strings.Join(orderClauses, ", ")
+	} else {
+		// If no valid order clauses, default to ordering by advertised_start_time
+		query += " ORDER BY advertised_start_time"
+	}
 
 	return query
+}
+
+// validateOrderByField checks if the field is a valid column name
+func validateOrderByField(field string) bool {
+
+	// regular expression to allow alphanumeric characters, underscores, and sorting keywords
+	// it does not allow SQL keywords (like INSERT, UPDATE) or special characters
+	re := regexp.MustCompile(`^[a-zA-Z0-9_]+(\s+(ASC|DESC))?$`)
+	return re.MatchString(field)
 }
 
 func (m *racesRepo) scanRaces(
@@ -149,4 +168,33 @@ func (m *racesRepo) scanRaces(
 	}
 
 	return races, nil
+}
+
+// Gets a single race by id.
+func (r *racesRepo) Get(id int64) (*racing.Race, error) {
+	var (
+		query           string
+		advertisedStart time.Time
+	)
+
+	query = getRaceQuery(id)[race]
+
+	var race racing.Race
+
+	row := r.db.QueryRow(query, id)
+	err := row.Scan(&race.Id, &race.MeetingId, &race.Name, &race.Number, &race.Visible, &advertisedStart, &race.Status)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrRaceNotFound(id)
+		}
+		return nil, err
+	}
+
+	return &race, nil
+}
+
+// ErrRaceNotFound is returned when a race is not found.
+func ErrRaceNotFound(id int64) error {
+	return fmt.Errorf("race with id %d not found", id)
 }

@@ -2,7 +2,7 @@
 
 ### ListRaces
 
-The ListRaces API lets you retrieve a list of races with the following properties:
+The ListRaces service lets you retrieve a list of races with the following properties:
 - **id** - represents a unique identifier for the race.
 - **meeting_id** - represents a unique identifier for the races meeting.
 - **name** - is the official name given to the race.
@@ -11,10 +11,11 @@ The ListRaces API lets you retrieve a list of races with the following propertie
 - **advertised_start_time** - is the time the race is advertised to run.
 - **status** - represents the status of a race, which is either open or closed.
 
-The ListRaces request takes an optional filter and orderBy parameter. 
+The ListRaces request takes an optional filter and orderBy parameters as Json. 
 For the **filter paramater** you can specify the meetingIds within an array of integers and/or a showVisibleOnly boolean flag, or leave in blank. 
 For the **order paramater** you can specify one or more columns incl. their sorting order, or leave in blank. 
-**See examples below...**
+**See examples below** with API requests being made via the api gateway (port 8000), which forwards the requests to the racing service (port 9000)...
+Also keep an eye on the **racing_test.go** file which includes unit tests illustrating how to consume the racing service methods for various use cases.
 
 Curl request with no filter
 ```bash
@@ -67,4 +68,9 @@ curl -X "POST" "http://localhost:8000/v1/list-races" \
 }'
 ```
 
-Also keep an eye on the **racing_test.go** file which includes a unit test illustrating how to consume the racing service method for various use cases.
+Curl request to get a race by id
+
+```bash
+curl -X "GET" "http://localhost:8000/v1/races/10" \
+     -H 'Content-Type: application/json'
+```
