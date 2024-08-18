@@ -1,8 +1,6 @@
 ## Racing Service
 
-### ListRaces
-
-The ListRaces service lets you retrieve a list of races with the following properties:
+The racing service has a `ListRaces` and a `GetRace` endpoint which lets you retrieve a list of races with the following properties:
 - **id** - represents a unique identifier for the race.
 - **meeting_id** - represents a unique identifier for the races meeting.
 - **name** - is the official name given to the race.
@@ -11,9 +9,16 @@ The ListRaces service lets you retrieve a list of races with the following prope
 - **advertised_start_time** - is the time the race is advertised to run.
 - **status** - represents the status of a race, which is either open or closed.
 
-The ListRaces request takes an optional filter and orderBy parameters as Json. 
+`POST: /v1/list-races`
+
+The `ListRaces` request takes an optional filter and orderBy parameters as Json. 
 For the **filter paramater** you can specify the meetingIds within an array of integers and/or a showVisibleOnly boolean flag, or leave in blank. 
 For the **order paramater** you can specify one or more columns incl. their sorting order, or leave in blank. 
+
+`GET: /v1/races/{id}`
+
+The `GetRace` request takes an id which is the a unique identifier for the race and returns a single race with the above properties, or a not found error if no race can be found with the id provided.
+
 **See examples below** with API requests being made via the api gateway (port 8000), which forwards the requests to the racing service (port 9000)...
 Also keep an eye on the **racing_test.go** file which includes unit tests illustrating how to consume the racing service methods for various use cases.
 
