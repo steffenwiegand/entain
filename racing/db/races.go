@@ -18,7 +18,7 @@ type RacesRepo interface {
 	Init() error
 
 	// List will return a list of races.
-	List(filter *racing.ListRacesRequestFilter) ([]*racing.Race, error)
+	List(filter *racing.ListRacesRequestFilter, orderBy string) ([]*racing.Race, error)
 }
 
 type racesRepo struct {
@@ -43,7 +43,8 @@ func (r *racesRepo) Init() error {
 	return err
 }
 
-func (r *racesRepo) List(filter *racing.ListRacesRequestFilter) ([]*racing.Race, error) {
+// Lists all races. The paramter filter, orderBy can be left blank. By default all races are returned, sorted by advertised_start_time.
+func (r *racesRepo) List(filter *racing.ListRacesRequestFilter, orderBy string) ([]*racing.Race, error) {
 	var (
 		err   error
 		query string
@@ -52,7 +53,9 @@ func (r *racesRepo) List(filter *racing.ListRacesRequestFilter) ([]*racing.Race,
 
 	query = getRaceQueries()[racesList]
 
-	query, args = r.applyFilter(query, filter)
+	query, args = r.applyFilter(query, filter, orderBy)
+
+	query = r.applyOrderBy(query, orderBy)
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
@@ -62,7 +65,7 @@ func (r *racesRepo) List(filter *racing.ListRacesRequestFilter) ([]*racing.Race,
 	return r.scanRaces(rows)
 }
 
-func (r *racesRepo) applyFilter(query string, filter *racing.ListRacesRequestFilter) (string, []interface{}) {
+func (r *racesRepo) applyFilter(query string, filter *racing.ListRacesRequestFilter, orderBy string) (string, []interface{}) {
 	var (
 		clauses []string
 		args    []interface{}
@@ -80,11 +83,42 @@ func (r *racesRepo) applyFilter(query string, filter *racing.ListRacesRequestFil
 		}
 	}
 
+	if filter.ShowVisibleOnly {
+		clauses = append(clauses, "visible=1")
+	}
+
 	if len(clauses) != 0 {
 		query += " WHERE " + strings.Join(clauses, " AND ")
 	}
 
 	return query, args
+}
+
+func (r *racesRepo) applyOrderBy(query string, orderBy string) string {
+
+	// default case
+	if strings.TrimSpace(orderBy) == "" {
+		query += " ORDER BY advertised_start_time"
+		return query
+	}
+
+	orderFields := strings.Split(orderBy, ",")
+
+	var orderClauses []string
+
+	// loop through each field provided and append to query if not empty
+	for _, field := range orderFields {
+		field = strings.TrimSpace(field)
+
+		if strings.TrimSpace(field) != "" {
+			orderClauses = append(orderClauses, field)
+		}
+	}
+
+	// append the order clauses to the query
+	query += " ORDER BY " + strings.Join(orderClauses, ", ")
+
+	return query
 }
 
 func (m *racesRepo) scanRaces(
@@ -96,7 +130,7 @@ func (m *racesRepo) scanRaces(
 		var race racing.Race
 		var advertisedStart time.Time
 
-		if err := rows.Scan(&race.Id, &race.MeetingId, &race.Name, &race.Number, &race.Visible, &advertisedStart); err != nil {
+		if err := rows.Scan(&race.Id, &race.MeetingId, &race.Name, &race.Number, &race.Visible, &advertisedStart, &race.Status); err != nil {
 			if err == sql.ErrNoRows {
 				return nil, nil
 			}
