@@ -1,0 +1,70 @@
+syntax = "proto3";
+package sports;
+
+option go_package = "/sports";
+
+import "google/protobuf/timestamp.proto";
+
+service Sports {
+  // ListEvents will return a collection of all events.
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {}
+
+  // GetEvent returns an event via its id.
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse) {}
+}
+
+/* Requests/Responses */
+/* ListEvents*/
+
+// Request for ListEvents call.
+message ListEventsRequest {
+  ListEventsRequestFilter filter = 1;
+  string orderBy = 2;
+}
+
+// Response to ListEvents call.
+message ListEventsResponse {
+  repeated Event events = 1;
+}
+
+// Filter for listing events.
+message ListEventsRequestFilter {
+  repeated int64 category_ids = 1;
+  bool show_visible_only = 2;
+}
+
+/* Requests/Responses */
+/* GetEvent */
+// Request for GetEvent call.
+message GetEventRequest {
+  int64 id = 1;
+}
+
+// Response to GetEvent call.
+message GetEventResponse {
+  Event event = 1;
+}
+
+/* Resources */
+
+// A event resource.
+message Event {
+  // ID represents a unique identifier for the event.
+  int64 id = 1;
+  // Name is the official name given to the event.
+  string name = 2;
+  // CategoryID represents a unique identifier for the event category which identiefies as soccer, baseball, basketball, etc.
+  int64 category_id = 3;
+   // Division represents where within the division the event sits in (for soccer category, country england: premier league, championship, league one, league two, etc).
+  string division = 4;
+  // Country represents which country the event takes place
+  string country = 5;
+  // Location represents which country the event takes place
+  string location = 6;
+  // AdvertisedStartTime is the time the event is advertised to run.
+  google.protobuf.Timestamp advertised_start_time = 7;
+  // Status reflects the current status of an event. Values are`OPEN` or `CLOSED` or 'CANCELED'. 
+  string status = 8;
+  // Visible represents whether or not the event is visible.
+  bool visible = 9;
+}
